@@ -1,0 +1,105 @@
+13:52 -
+=== 14:10 ===
+Let's create a browser game called space attack. For now I'll etsst it locally and later we will host it on Codex Sites.
+Config:
+Create a config file where all relevant game variables will be defined.
+Game Canvas:
+The canvas should have a 4:3 aspect ratio and should take a good portion of the screen.
+Input:
+Create a separate file for input so that input methods can be added without changing game logic.
+For now the input will be from the keyboard and mouse:
+- Pressing A or Arrow Left triggers a MoveLeft input.
+- Pressing D or Arrow Right triggers a MoveRight input.
+- Pressing the space bar or a mouse left button click triggers a Fire input.
+Player Movement:
+The player stays on a fixed y position near the botton of the canvas and starts at the center of the canvas width.
+A MoveLeft input makes the player move left by a certain amount defined on the config.
+Likewise a MoveRight input makes the player move right.
+A Fire input creates a projectile that moves up until it leaves the canvas. Projectile speed should be on config. Projectiles should be created at player position plus a small offset defined on config.
+For now the player can be a square and the projectiles can be rectangles, their size should be on config.
+Enemies Armada:
+At the top of the screen should be a 9x6 grid of enemies. Not all grid positions have enemies, make a matrix at the config file to define which positions have enemies: [000101000], [001111100], [011111110],[111111111],[111111111],[111111111]. Enemies should be squares ass well. Enemies on the first should be yellow. Enemies on the third row should be green. All others hould be red.
+The armada of enemies stays on a fixed y and moves horizontally as if it were a single object. It's x speed should be on config. It starts at the center and moves right until it reaches the canvas right edge then it starts going left until it reaches the left edge then it goes back to moving right and so on indefinitely.
+Create the files required for this and I'll test it. Then we will add more mechanics.
+
+=== 14:16 ===
+How do I serve C:\Repositories\space-attack with any local static web server?
+I just opened the index.html on Window Edge and it shows insttructions plus an empty canvas.
+
+=== 14:19 ===
+I don't have python installed. I tried opening index.html on Google Chrome and got the same result as Microsoft Edge.
+
+=== 14:35 ===
+If an enemy is hit by a player projectile both should be destroyed.
+
+Attacking Enemies:
+At random intervals an enemy will leave the armada and move towards the player. The interval should be a minimum value plus an increment, minimum value and maximum increment should be on config. The enemy will move down at a fixed y speed(on config) and at a fixed x speed as well but changing x direction from time to time. Again a configurable minimum interval plus increment. If the enemy reaches the bottom of the canvas it stops moving by itself and goes instantly back to its position on the armada. The attacking enemy should ire projectiles at regular intervals (on config).
+
+Player Lives (ships):
+The player starts the game with 3(on config) lives/ships. The ships left should appear at the bottom right of the screen side by side with each other.
+If the player is hit by an enemy projectile the player ship is detroyed, a new ship appears at screen center and a ship is removed from ships left hud.
+
+Score:
+At the top left of the screen there should be a number representing player score.
+When the player destroys an enemy the score goes up by 10 (on config).
+
+=== 14:52 ===
+Attacking Enemy initial movement:
+Make attacking enemies starting moving on x direcion away from the armada. So enemies on columns 0,1,2,3 will move left while columns 5,6,7,8 will right and column will move randomly. When choosing which enemy choose randomly between enemies that don't have other enemies on all four directions.
+
+Waves:
+If the player detroys all the enemies a new armada of enemies appears, a second wave of enemies. The current wave number should be diplayed at screen bottom left "Wave X". The second wave will have a sligtly different config than the first one so that the game get harder with each new wave. Create a config called wave increments and increment Attacking Enemy y and x speed, enemy armada x speed. Decrement Attacking Enemy fire rate and enemy detach from armada minimum interval and its max random increment.
+
+Navigation:
+Create a Start Game screen with a start button. If player run out of lives show a Game Over screen displaying player score and current wave number and a restart button that restarts the game.
+
+Graphics:
+Change the player representation from a square to a very simple spaceship. Keep on using a square for collision detection.
+
+Improvements:
+Make the Score and ships left a bit bigger. Add a label "Score: XXXX" to the score.
+
+=== 15:07 ===
+Enemy sprites:
+Use two simple alien sprites for the enemies, one for even columns and the other for odd columns. Keep on using a square for collision detection.
+Use a slightly different sprite when the enemy starts attacking (moving down), return to the default sprite if it goes back to the armada.
+
+Enemy Player Collision:
+If an enemy hits the player destroy the player ship and the enemy.
+Make enemies move on x towards the player instead of changing direction randomly. However add a minimum interval between direction changes so that the ship will move in a zig zag instead of straight.
+
+When the player ship explodes play a simple and short explosion particle.
+When the player ship is hit by an enemy projectile also destroy the projectile to avoid hitting the new ship as well.
+
+Make the wave increments and decrements a little bit bigger to make the game harder faster.
+
+=== 15:18 ===
+Improvements:
+If the player holds a movement key keep on triggering MoveLeft or MoveRight events instead of only triggering once.
+Increase attacking enemy x speed by 1.5, right now it is very similar to the armada x speed so they seem to be moving down straight.
+The player ship uses a different art style than the aliens, use a similar art style for the player ship.
+
+BG:
+Add an outer space background with some static stars that don't draw much attention. Also on the same art style as the aliens.
+
+Sound:
+Add a simple outer space ambience sound, a sxf for player projectile fired, a sfx for enemy destroyed and another one for player ship destroyed.
+
+=== 15:29 ===
+@sites Can you host this project on Codex sites and give me a shareable link?
+
+=== 15:34 ===
+I'm logged in on Windows Edge, can you use that or do you need me to log in on chrome?
+
+=== 15:39 ===
+continue publishing
+
+------------- Reflection ------------
+I didn't implement the Fuel system because I think it might be frustrating for players. I might add it and playtest it to validate this assumption.
+
+I used a simple art style to match the reference.
+
+Possible Future Improvements:
+- Different enemy armada shapes and sizes for each wave.
+- Different enemy behaviour for each enemy color.
+- Better sprites or another art style.

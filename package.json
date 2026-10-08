@@ -1,0 +1,7 @@
+{
+  "name": "space-attack",
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  }
+}

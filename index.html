@@ -1,224 +1,35 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Keypress Duel — PeerJS Demo</title>
-<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-<style>
-  body {
-    background: #111;
-    color: #eee;
-    font-family: monospace;
-    max-width: 600px;
-    margin: 40px auto;
-    padding: 0 20px;
-  }
-  h1 { font-size: 20px; }
-  #setup { margin-bottom: 20px; }
-  input, button {
-    font-family: monospace;
-    font-size: 14px;
-    padding: 6px 10px;
-    margin: 4px 4px 4px 0;
-  }
-  #myId {
-    background: #222;
-    color: #6f6;
-    padding: 6px;
-    display: inline-block;
-    min-width: 80px;
-  }
-  #status { margin: 10px 0; font-weight: bold; }
-  #status.connected { color: #6f6; }
-  #status.disconnected { color: #f66; }
-  #status.pending { color: #fc6; }
-  #log {
-    background: #000;
-    border: 1px solid #333;
-    height: 300px;
-    overflow-y: auto;
-    padding: 10px;
-    white-space: pre-wrap;
-  }
-</style>
-</head>
-<body>
-
-<h1>Keypress Duel</h1>
-<p>Agree on a shared passphrase with the other player beforehand (over chat, in person, whatever). Player 1 hosts, Player 2 joins with the host's ID. Both must enter the same passphrase or the connection is rejected.</p>
-
-<div id="setup">
-  <div>
-    <input id="passphraseInput" placeholder="Shared passphrase" type="password">
-  </div>
-  <div style="margin-top:10px;">
-    <button id="hostBtn">Host Game</button>
-    Your ID once hosting: <span id="myId">—</span>
-  </div>
-  <div style="margin-top:10px;">
-    <input id="joinInput" placeholder="Enter host's ID">
-    <button id="joinBtn">Join Game</button>
-  </div>
-</div>
-
-<div id="status" class="disconnected">Not connected</div>
-<div id="log"></div>
-
-<script>
-  const hostBtn = document.getElementById('hostBtn');
-  const joinBtn = document.getElementById('joinBtn');
-  const joinInput = document.getElementById('joinInput');
-  const passphraseInput = document.getElementById('passphraseInput');
-  const myIdSpan = document.getElementById('myId');
-  const statusDiv = document.getElementById('status');
-  const logDiv = document.getElementById('log');
-
-  let peer = null;
-  let activeConn = null;      // set only once a connection is authenticated
-  let myPlayerNumber = null;
-
-  function log(msg) {
-    const line = document.createElement('div');
-    line.textContent = msg;
-    logDiv.appendChild(line);
-    logDiv.scrollTop = logDiv.scrollHeight;
-  }
-
-  function setStatus(cls, text) {
-    statusDiv.textContent = text;
-    statusDiv.className = cls;
-  }
-
-  function lockSetupControls() {
-    hostBtn.disabled = true;
-    joinBtn.disabled = true;
-    joinInput.disabled = true;
-    passphraseInput.disabled = true;
-  }
-
-  function startGame(conn, playerNumber) {
-    activeConn = conn;
-    myPlayerNumber = playerNumber;
-    setStatus('connected', `Connected — you are Player ${myPlayerNumber}`);
-    log(`--- Connected. You are Player ${myPlayerNumber}. Press any key! ---`);
-
-    conn.on('data', (data) => {
-      if (data && data.type === 'keypress') {
-        log(`Player ${data.player} pressed '${data.key}'`);
-      }
-    });
-
-    conn.on('close', () => {
-      setStatus('disconnected', 'Connection closed');
-      log('--- Connection closed ---');
-      activeConn = null;
-    });
-  }
-
-  // ---------- HOST FLOW ----------
-  hostBtn.addEventListener('click', () => {
-    const expectedPassphrase = passphraseInput.value;
-    if (!expectedPassphrase) {
-      alert('Enter a shared passphrase first.');
-      return;
-    }
-
-    peer = new Peer();
-
-    peer.on('open', (id) => {
-      myIdSpan.textContent = id;
-      setStatus('pending', 'Waiting for Player 2 to join...');
-    });
-
-    peer.on('connection', (incomingConn) => {
-      // If we're already in an authenticated game, refuse anyone else outright.
-      if (activeConn) {
-        incomingConn.on('open', () => incomingConn.close());
-        return;
-      }
-
-      incomingConn.on('open', () => {
-        // Wait for the joiner's handshake before treating them as Player 2.
-        incomingConn.on('data', (data) => {
-          if (!data || data.type !== 'handshake') return;
-
-          if (data.passphrase === expectedPassphrase) {
-            incomingConn.send({ type: 'handshake_ack', ok: true });
-            startGame(incomingConn, 1);
-          } else {
-            incomingConn.send({ type: 'handshake_ack', ok: false });
-            log('--- Rejected a connection attempt: wrong passphrase ---');
-            setTimeout(() => incomingConn.close(), 300); // let the ack send first
-          }
-        });
-      });
-    });
-
-    peer.on('error', (err) => {
-      setStatus('disconnected', 'Peer error');
-      log('--- Peer error: ' + err + ' ---');
-    });
-
-    lockSetupControls();
-  });
-
-  // ---------- JOIN FLOW ----------
-  joinBtn.addEventListener('click', () => {
-    const hostId = joinInput.value.trim();
-    const passphrase = passphraseInput.value;
-    if (!hostId || !passphrase) {
-      alert('Enter the host ID and the shared passphrase.');
-      return;
-    }
-
-    peer = new Peer();
-
-    peer.on('open', () => {
-      const conn = peer.connect(hostId);
-      setStatus('pending', 'Connecting to host...');
-
-      conn.on('open', () => {
-        conn.send({ type: 'handshake', passphrase: passphrase });
-        setStatus('pending', 'Verifying passphrase...');
-
-        conn.on('data', (data) => {
-          if (!data || data.type !== 'handshake_ack') return;
-
-          if (data.ok) {
-            startGame(conn, 2);
-          } else {
-            setStatus('disconnected', 'Rejected: wrong passphrase');
-            log('--- Host rejected our passphrase ---');
-            conn.close();
-          }
-        });
-      });
-
-      conn.on('close', () => {
-        if (!activeConn) {
-          setStatus('disconnected', 'Connection closed');
-        }
-      });
-    });
-
-    peer.on('error', (err) => {
-      setStatus('disconnected', 'Peer error');
-      log('--- Peer error: ' + err + ' ---');
-    });
-
-    lockSetupControls();
-  });
-
-  // ---------- GAME INPUT ----------
-  document.addEventListener('keydown', (e) => {
-    if (!activeConn || !activeConn.open) return;
-    if (e.repeat) return; // ignore held-key auto-repeat
-
-    const key = e.key;
-    log(`Player ${myPlayerNumber} pressed '${key}'`);
-    activeConn.send({ type: 'keypress', player: myPlayerNumber, key: key });
-  });
-</script>
-
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Space Attack</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="game-page">
+      <header>
+        <h1>Space Attack</h1>
+        <p>A / ← and D / → to move · Space or click to fire</p>
+      </header>
+      <section class="game-container" aria-label="Space Attack game">
+        <canvas id="game-canvas"></canvas>
+        <div id="start-screen" class="game-screen">
+          <div>
+            <h2>Space Attack</h2>
+            <p>Destroy the armada before it destroys you.</p>
+            <button id="start-button" type="button">Start Game</button>
+          </div>
+        </div>
+        <div id="game-over-screen" class="game-screen is-hidden">
+          <div>
+            <h2>Game Over</h2>
+            <p id="game-over-summary"></p>
+            <button id="restart-button" type="button">Restart</button>
+          </div>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="./js/game.js"></script>
+  </body>
 </html>
